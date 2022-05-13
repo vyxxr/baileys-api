@@ -13,9 +13,12 @@ import makeWASocket, {
 import { toDataURL } from 'qrcode'
 import __dirname from './dirname.js'
 import response from './response.js'
+import formatMessage from './utils/formatMessage.js'
+import axios from 'axios'
 
 const sessions = new Map()
 const retries = new Map()
+const hooks = new Map()
 
 const sessionsDir = (sessionId = '') => {
     return join(__dirname, 'sessions', sessionId ? `${sessionId}.json` : '')
@@ -87,11 +90,28 @@ const createSession = async (sessionId, isLegacy = false, res = null) => {
         }
     })
 
-    // Automatically read incoming messages, uncomment below codes to enable this behaviour
-    /*
     wa.ev.on('messages.upsert', async (m) => {
         const message = m.messages[0]
 
+        const messageType = Object.keys(message.message)[0] // get what type of message it is -- text, image, video
+
+        if (!message.key.fromMe) {
+            if (messageType !== 'protocolMessage') { // check if is a message
+                const formattedMessage = formatMessage({
+                    ...message,
+                    sessionId,
+                    messageType,
+                    device: getSession(sessionId).user.id,
+                })
+
+                console.log('MSG', message)
+
+                const hook = hooks.get(sessionId)
+                axios.post(hook.wh_message, formattedMessage)
+            }
+        }
+
+        // Automatically read incoming messages
         if (!message.key.fromMe && m.type === 'notify') {
             await delay(1000)
 
@@ -102,7 +122,6 @@ const createSession = async (sessionId, isLegacy = false, res = null) => {
             }
         }
     })
-    */
 
     wa.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect } = update
@@ -241,6 +260,12 @@ const formatGroup = (group) => {
     return (formatted += '@g.us')
 }
 
+const addHooks = (sessionId, nhooks) => {
+    if (!hooks.get(sessionId)) {
+        hooks.set(sessionId, nhooks)
+    }
+}
+
 const cleanup = () => {
     console.log('Running cleanup before exit.')
 
@@ -285,6 +310,7 @@ export {
     sendMessage,
     formatPhone,
     formatGroup,
+    addHooks,
     cleanup,
     init,
 }
