@@ -8,7 +8,7 @@ const getList = (req, res) => {
 const send = async (req, res) => {
     const session = getSession(res.locals.sessionId)
     const receiver = formatPhone(req.body.receiver)
-    const { message } = req.body
+    const { message, options } = req.body
 
     try {
         const exists = await isExists(session, receiver)
@@ -17,9 +17,9 @@ const send = async (req, res) => {
             return response(res, 400, false, 'The receiver number is not exists.')
         }
 
-        await sendMessage(session, receiver, message)
+        const objResponse = await sendMessage(session, receiver, message, options)
 
-        response(res, 200, true, 'The message has been successfully sent.')
+        response(res, 200, true, 'The message has been successfully sent.', objResponse)
     } catch {
         response(res, 500, false, 'Failed to send the message.')
     }
