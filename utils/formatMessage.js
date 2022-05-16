@@ -1,11 +1,13 @@
 const formatMessage = (message) => {
     const type = message.messageType.split(/(?=[A-Z])/)[0]
-    const re = /extendedTextMessage|templateButtonReplyMessage|conversation/
+    const re = /extendedTextMessage|templateButtonReplyMessage|conversation|messageContextInfo/
 
     let messageContent
 
     if (['extendedTextMessage', 'templateButtonReplyMessage'].indexOf(message.messageType) >= 0) {
         messageContent = Object.values(Object.values(message.message)[0])[0]
+    } else if (message.messageType === 'messageContextInfo') {
+        messageContent = Object.values(Object.values(message.message)[1])[1]
     }
 
     const obj = {
