@@ -54,7 +54,7 @@ const createSession = async (sessionId, isLegacy = false, res = null) => {
     const sessionFile = (isLegacy ? 'legacy_' : 'md_') + sessionId
 
     const logger = pino({ level: 'warn' })
-    const store = makeInMemoryStore({ logger })
+    // const store = makeInMemoryStore({ logger })
 
     const { state, saveState } = isLegacy
         ? useSingleFileLegacyAuthState(sessionsDir(sessionFile))
@@ -75,20 +75,20 @@ const createSession = async (sessionId, isLegacy = false, res = null) => {
      */
     const wa = isLegacy ? makeWALegacySocket(waConfig) : makeWASocket.default(waConfig)
 
-    if (!isLegacy) {
-        store.readFromFile(sessionsDir(`${sessionId}_store`))
-        store.bind(wa.ev)
-    }
+    // if (!isLegacy) {
+    //     store.readFromFile(sessionsDir(`${sessionId}_store`))
+    //     store.bind(wa.ev)
+    // }
 
-    sessions.set(sessionId, { ...wa, store, isLegacy })
+    sessions.set(sessionId, { ...wa, isLegacy })
 
     wa.ev.on('creds.update', saveState)
 
-    wa.ev.on('chats.set', ({ chats }) => {
-        if (isLegacy) {
-            store.chats.insertIfAbsent(...chats)
-        }
-    })
+    // wa.ev.on('chats.set', ({ chats }) => {
+    //     if (isLegacy) {
+    //         store.chats.insertIfAbsent(...chats)
+    //     }
+    // })
 
     wa.ev.on('messages.upsert', async (m) => {
         const message = m.messages[0]
@@ -269,11 +269,11 @@ const addHooks = (sessionId, nhooks) => {
 const cleanup = () => {
     console.log('Running cleanup before exit.')
 
-    sessions.forEach((session, sessionId) => {
-        if (!session.isLegacy) {
-            session.store.writeToFile(sessionsDir(`${sessionId}_store`))
-        }
-    })
+    // sessions.forEach((session, sessionId) => {
+    //     if (!session.isLegacy) {
+    //         session.store.writeToFile(sessionsDir(`${sessionId}_store`))
+    //     }
+    // })
 }
 
 const init = () => {
