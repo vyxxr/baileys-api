@@ -6,7 +6,7 @@ import * as controller from './../controllers/connectionController.js'
 
 const router = Router()
 
-router.post('/connect', sessionValidator, controller.connect)
+router.post('/connect', controller.connect)
 
 // router.get('/status/:id', sessionValidator, controller.status)
 

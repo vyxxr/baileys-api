@@ -153,7 +153,17 @@ const createSession = async (sessionId, isLegacy = false, res = null) => {
                 try {
                     const qr = await toDataURL(update.qr)
 
-                    response(res, 200, true, 'QR code received, please scan the QR code.', { qr })
+                    const im = qr.split(",")[1];
+
+                    const img = Buffer.from(im, 'base64');
+
+                    res.writeHead(200, {
+                        'Content-Type': 'image/png',
+                        'Content-Length': img.length
+                    });
+
+                    res.end(img);
+                    // response(res, 200, true, 'QR code received, please scan the QR code.', { qr })
 
                     return
                 } catch {
@@ -246,6 +256,11 @@ const formatPhone = (phone) => {
     }
 
     let formatted = phone.replace(/\D/g, '')
+
+    // remove the 9 from the phone number
+    if (formatted.length > 12) {
+        formatted = formatted.slice(0, 4) + formatted.slice(5);
+    }
 
     return (formatted += '@s.whatsapp.net')
 }
