@@ -14,6 +14,7 @@ import { toDataURL } from 'qrcode'
 import __dirname from './dirname.js'
 import response from './response.js'
 import formatMessage from './utils/formatMessage.js'
+import decryptMessage from './utils/decryptMessage.js'
 import axios from 'axios'
 
 const sessions = new Map()
@@ -92,22 +93,42 @@ const createSession = async (sessionId, isLegacy = false, res = null) => {
 
     wa.ev.on('messages.upsert', async (m) => {
         const message = m.messages[0]
+        let blob
+        let filename
+        let mimetype
 
         const messageType = Object.keys(message.message)[0] // get what type of message it is -- text, image, video
+        const type = messageType.split(/(?=[A-Z])/)[0]
 
         if (!message.key.fromMe) {
             if (messageType !== 'protocolMessage') { // check if is a message
-                const formattedMessage = formatMessage({
+
+                if (['image', 'document', 'audio', 'video'].indexOf(type) >= 0) {
+                    [blob, filename, mimetype] = await decryptMessage(message, type)
+                }
+
+                const obj = {
                     ...message,
                     sessionId,
                     messageType,
                     device: getSession(sessionId).user.id,
-                })
+                    type,
+                    blob,
+                    filename,
+                    mimetype
+                }
 
-                console.log('MSG', message)
+                const formattedMessage = formatMessage(obj)
 
                 const hook = hooks.get(sessionId)
-                axios.post(hook.wh_message, formattedMessage)
+
+                axios({
+                    method: 'post',
+                    url: hook.wh_message,
+                    data: formattedMessage,
+                    maxContentLength: Infinity,
+                    maxBodyLength: Infinity
+                })
             }
         }
 

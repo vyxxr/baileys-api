@@ -1,6 +1,7 @@
 const formatMessage = (message) => {
-    const type = message.messageType.split(/(?=[A-Z])/)[0]
     const re = /extendedTextMessage|templateButtonReplyMessage|conversation|messageContextInfo/
+
+    const isMedia = !re.test(message.messageType)
 
     let messageContent
 
@@ -10,13 +11,13 @@ const formatMessage = (message) => {
         messageContent = Object.values(Object.values(message.message)[1])[1]
     }
 
-    const obj = {
+    let obj = {
         container: message.sessionId,
         session: message.sessionId.split('-')[1],
         device: message.device.replace(/(^[0-9]+).*$/g, '$1'),
         event: 'on-message',
-        type: re.test(message.messageType) ? 'text' : type,
-        isMedia: !re.test(message.messageType),
+        type: !isMedia ? 'text' : message.type,
+        isMedia: isMedia,
         pushName: message.pushName,
         id: message.key.id,
         from: message.key.remoteJid.replace(/\D/g, ''),
@@ -24,6 +25,15 @@ const formatMessage = (message) => {
         content: messageContent || message.message.conversation,
         isGroup: message.key.remoteJid.endsWith('@g.us'),
         timestamp: message.messageTimestamp?.low || message.messageTimestamp
+    }
+
+    if (isMedia) {
+        obj = {
+            ...obj,
+            blob: message.blob,
+            filename: message.filename || "",
+            mimetype: message.mimetype
+        }
     }
 
     return obj
