@@ -101,7 +101,7 @@ const createSession = async (sessionId, isLegacy = false, res = null) => {
         const type = messageType.split(/(?=[A-Z])/)[0]
 
         if (!message.key.fromMe) {
-            if (messageType !== 'protocolMessage') { // check if is a message
+            if (messageType !== 'protocolMessage' && !message.key.remoteJid.endsWith('@g.us') && !message.key.remoteJid.endsWith('@broadcast')) { // check if is a message and is not from a group
 
                 if (['image', 'document', 'audio', 'video'].indexOf(type) >= 0) {
                     [blob, filename, mimetype] = await decryptMessage(message, type)
