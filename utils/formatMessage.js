@@ -1,14 +1,27 @@
 const formatMessage = (message) => {
-    const re = /extendedTextMessage|templateButtonReplyMessage|conversation|messageContextInfo/
+    const re = /extendedTextMessage|templateButtonReplyMessage|conversation|messageContextInfo|contactMessage/
 
     const isMedia = !re.test(message.messageType)
 
     let messageContent
+    let type
 
     if (['extendedTextMessage', 'templateButtonReplyMessage'].indexOf(message.messageType) >= 0) {
         messageContent = Object.values(Object.values(message.message)[0])[0]
     } else if (message.messageType === 'messageContextInfo') {
         messageContent = Object.values(Object.values(message.message)[1])[1]
+    } else if (message.messageType === 'contactMessage') {
+        messageContent = Object.values(Object.values(message.message)[0])[1]
+    }
+
+    if (!isMedia) {
+        if (message.type === 'contact') {
+            type = 'contact'
+        } else {
+            type = 'text'
+        }
+    } else {
+        type = message.type
     }
 
     let obj = {
@@ -16,7 +29,7 @@ const formatMessage = (message) => {
         session: message.sessionId.split('-')[1],
         device: message.device.replace(/(^[0-9]+).*$/g, '$1'),
         event: 'on-message',
-        type: !isMedia ? 'text' : message.type,
+        type: type,
         isMedia: isMedia,
         pushName: message.pushName,
         id: message.key.id,

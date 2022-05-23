@@ -97,6 +97,10 @@ const createSession = async (sessionId, isLegacy = false, res = null) => {
         let filename
         let mimetype
 
+        if (!message.message) return
+
+        console.log('MSG', message.message)
+
         const messageType = Object.keys(message.message)[0] // get what type of message it is -- text, image, video
         const type = messageType.split(/(?=[A-Z])/)[0]
 
