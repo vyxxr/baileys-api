@@ -137,7 +137,7 @@ const createSession = async (sessionId, isLegacy = false, res = null) => {
         }
 
         // Automatically read incoming messages
-        if (!message.key.fromMe && m.type === 'notify') {
+        if (!message.key.fromMe && m.type === 'notify' && !message.key.remoteJid.endsWith('@g.us')) {
             await delay(1000)
 
             if (isLegacy) {
