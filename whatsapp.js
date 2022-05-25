@@ -256,7 +256,12 @@ const isExists = async (session, jid, isGroup = false) => {
             ;[result] = await session.onWhatsApp(jid)
         }
 
-        return result.exists
+        if (result.exists) {
+            return result?.jid
+        } else {
+            return false
+        }
+
     } catch {
         return false
     }
@@ -281,11 +286,6 @@ const formatPhone = (phone) => {
     }
 
     let formatted = phone.replace(/\D/g, '')
-
-    // remove the 9 from the phone number
-    if (formatted.length > 12) {
-        formatted = formatted.slice(0, 4) + formatted.slice(5);
-    }
 
     return (formatted += '@s.whatsapp.net')
 }
