@@ -99,7 +99,12 @@ const createSession = async (sessionId, isLegacy = false, res = null) => {
 
         if (!message.message) return
 
-        console.log('MSG', message.message)
+        console.log(`${new Intl.DateTimeFormat(
+            'pt-BR', {
+            timeZone: 'America/Sao_Paulo',
+            dateStyle: 'short',
+            timeStyle: 'short'
+        }).format(new Date()).toString()}\n`, message.message)
 
         const messageType = Object.keys(message.message)[0] // get what type of message it is -- text, image, video
         const type = messageType.split(/(?=[A-Z])/)[0]
