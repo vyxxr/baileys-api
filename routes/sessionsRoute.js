@@ -14,4 +14,6 @@ router.get('/add/:id', param('id').notEmpty(), requestValidator, controller.add)
 
 router.get('/delete/:id', sessionValidator, controller.del)
 
+router.get('/list', controller.list)
+
 export default router

@@ -213,6 +213,23 @@ const getSession = (sessionId) => {
     return sessions.get(sessionId) ?? null
 }
 
+const getAllSessions = () => {
+    const keys = [...sessions.keys()]
+    const arr = []
+
+    keys.forEach(key => {
+        const session = sessions.get(key)
+
+        arr.push({
+            id: key,
+            phone: session.user.id.replace(/(^[0-9]+).*$/g, '$1'),
+            name: session.user.name
+        })
+    });
+
+    return arr
+}
+
 const deleteSession = (sessionId, isLegacy = false) => {
     const sessionFile = (isLegacy ? 'legacy_' : 'md_') + sessionId
     const storeFile = `${sessionId}_store`
@@ -344,6 +361,7 @@ export {
     isSessionExists,
     createSession,
     getSession,
+    getAllSessions,
     deleteSession,
     getChatList,
     isExists,
