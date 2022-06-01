@@ -157,8 +157,16 @@ const createSession = async (sessionId, isLegacy = false, res = null) => {
         const { connection, lastDisconnect } = update
         const statusCode = lastDisconnect?.error?.output?.statusCode
 
+        const hook = hooks.get(sessionId)
+
         if (connection === 'open') {
             retries.delete(sessionId)
+
+            axios({
+                method: 'post',
+                url: hook.wh_status,
+                data: { session: sessionId, status: 'isLogged' }
+            })
         }
 
         if (connection === 'close') {
@@ -166,6 +174,12 @@ const createSession = async (sessionId, isLegacy = false, res = null) => {
                 if (res && !res.headersSent) {
                     response(res, 500, false, 'Unable to create session.')
                 }
+
+                axios({
+                    method: 'post',
+                    url: hook.wh_status,
+                    data: { session: sessionId, status: 'disconnected' }
+                })
 
                 return deleteSession(sessionId, isLegacy)
             }
