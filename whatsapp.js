@@ -142,15 +142,15 @@ const createSession = async (sessionId, isLegacy = false, res = null) => {
         }
 
         // Automatically read incoming messages
-        if (!message.key.fromMe && m.type === 'notify' && !message.key.remoteJid.endsWith('@g.us')) {
-            await delay(1000)
+        // if (!message.key.fromMe && m.type === 'notify' && !message.key.remoteJid.endsWith('@g.us')) {
+        //     await delay(1000)
 
-            if (isLegacy) {
-                await wa.chatRead(message.key, 1)
-            } else {
-                await wa.sendReadReceipt(message.key.remoteJid, message.key.participant, [message.key.id])
-            }
-        }
+        //     if (isLegacy) {
+        //         await wa.chatRead(message.key, 1)
+        //     } else {
+        //         await wa.sendReadReceipt(message.key.remoteJid, message.key.participant, [message.key.id])
+        //     }
+        // }
     })
 
     wa.ev.on('connection.update', async (update) => {
@@ -162,11 +162,13 @@ const createSession = async (sessionId, isLegacy = false, res = null) => {
         if (connection === 'open') {
             retries.delete(sessionId)
 
-            axios({
-                method: 'post',
-                url: hook.wh_status,
-                data: { session: sessionId, status: 'isLogged' }
-            })
+            if (hook?.wh_status) {
+                axios({
+                    method: 'post',
+                    url: hook.wh_status,
+                    data: { session: sessionId, status: 'isLogged' }
+                })
+            }
         }
 
         if (connection === 'close') {
@@ -175,11 +177,13 @@ const createSession = async (sessionId, isLegacy = false, res = null) => {
                     response(res, 500, false, 'Unable to create session.')
                 }
 
-                axios({
-                    method: 'post',
-                    url: hook.wh_status,
-                    data: { session: sessionId, status: 'disconnected' }
-                })
+                if (hook?.wh_status) {
+                    axios({
+                        method: 'post',
+                        url: hook.wh_status,
+                        data: { session: sessionId, status: 'disconnected' }
+                    })
+                }
 
                 return deleteSession(sessionId, isLegacy)
             }
