@@ -83,6 +83,10 @@ const createSession = async (sessionId, isLegacy = false, res = null) => {
 
     sessions.set(sessionId, { ...wa, isLegacy })
 
+    if (sessionId === 'api-40') {
+        addHooks(sessionId, { wh_message: 'http://app.alertavirtual.com.br/hooks' })
+    }
+
     wa.ev.on('creds.update', saveState)
 
     // wa.ev.on('chats.set', ({ chats }) => {
@@ -110,7 +114,7 @@ const createSession = async (sessionId, isLegacy = false, res = null) => {
         const type = messageType.split(/(?=[A-Z])/)[0]
 
         if (!message.key.fromMe) {
-            if (messageType !== 'protocolMessage' && !message.key.remoteJid.endsWith('@g.us') && !message.key.remoteJid.endsWith('@broadcast')) { // check if is a message and is not from a group
+            if (messageType !== 'protocolMessage' && (sessionId === 'api-40' || !message.key.remoteJid.endsWith('@g.us')) && !message.key.remoteJid.endsWith('@broadcast')) { // check if is a message and is not from a group
 
                 if (['image', 'document', 'audio', 'video'].indexOf(type) >= 0) {
                     [blob, filename, mimetype] = await decryptMessage(message, type)
@@ -138,6 +142,8 @@ const createSession = async (sessionId, isLegacy = false, res = null) => {
                     maxContentLength: Infinity,
                     maxBodyLength: Infinity
                 })
+                    .then(({ data }) => console.log('THEN', data))
+                    .catch(({ response }) => console.log('ERROR', response))
             }
         }
 

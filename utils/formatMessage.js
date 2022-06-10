@@ -2,6 +2,7 @@ const formatMessage = (message) => {
     const re = /extendedTextMessage|templateButtonReplyMessage|conversation|messageContextInfo|contactMessage/
 
     const isMedia = !re.test(message.messageType)
+    const isGroup = message.key.remoteJid.endsWith('@g.us')
 
     let messageContent
     let type
@@ -36,8 +37,16 @@ const formatMessage = (message) => {
         from: message.key.remoteJid.replace(/\D/g, ''),
         fromMe: message.key.fromMe,
         content: messageContent || message.message.conversation,
-        isGroup: message.key.remoteJid.endsWith('@g.us'),
+        isGroup: isGroup,
         timestamp: message.messageTimestamp?.low || message.messageTimestamp
+    }
+
+    if (isGroup) {
+        obj = {
+            ...obj,
+            from: message.key.remoteJid,
+            participant: message.key.participant.match(/\d+/g)[0]
+        }
     }
 
     if (isMedia) {
