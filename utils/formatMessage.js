@@ -10,7 +10,17 @@ const formatMessage = (message) => {
     if (['extendedTextMessage', 'templateButtonReplyMessage'].indexOf(message.messageType) >= 0) {
         messageContent = Object.values(Object.values(message.message)[0])[0]
     } else if (message.messageType === 'messageContextInfo') {
-        messageContent = Object.values(Object.values(message.message)[1])[1]
+        switch (Object.keys(message.message)[1]) {
+            case 'listResponseMessage':
+                messageContent = message.message.listResponseMessage.title
+                break;
+            case 'buttonsResponseMessage':
+                messageContent = message.message.buttonsResponseMessage.selectedDisplayText
+                break;
+            default:
+                messageContent = Object.values(Object.values(message.message)[1])[1]
+                break;
+        }
     } else if (message.messageType === 'contactMessage') {
         messageContent = Object.values(Object.values(message.message)[0])[1]
     }
