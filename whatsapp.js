@@ -1,4 +1,4 @@
-import { existsSync, unlinkSync, readdir } from 'fs'
+import { existsSync, unlinkSync, readdir, readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import pino from 'pino'
 import makeWASocket, {
@@ -95,68 +95,49 @@ const createSession = async (sessionId, isLegacy = false, res = null) => {
     //     }
     // })
 
-    wa.ev.on('messages.upsert', async (m) => {
-        const message = m.messages[0]
-        let blob
-        let filename
-        let mimetype
+    wa.ev.on('chats.set', ({ chats }) => {
+        let chatsJSON
+        let c = []
 
-        if (!message.message) return
+        if (isSessionFileExists(`${sessionId}_chats`)) {
+            chatsJSON = readFileSync(sessionsDir(`${sessionId}_chats`));
+            c = JSON.parse(chatsJSON);
+        }
 
-        console.log(`${new Intl.DateTimeFormat(
-            'pt-BR', {
-            timeZone: 'America/Sao_Paulo',
-            dateStyle: 'short',
-            timeStyle: 'short'
-        }).format(new Date()).toString()}\n`, message.message)
-
-        const messageType = Object.keys(message.message)[0] // get what type of message it is -- text, image, video
-        const type = messageType.split(/(?=[A-Z])/)[0]
-
-        if (!message.key.fromMe) {
-            if (messageType !== 'protocolMessage' && (sessionId === 'api-40' || !message.key.remoteJid.endsWith('@g.us')) && !message.key.remoteJid.endsWith('@broadcast')) { // check if is a message and is not from a group
-
-                if (['image', 'document', 'audio', 'video'].indexOf(type) >= 0) {
-                    [blob, filename, mimetype] = await decryptMessage(message, type)
-                }
-
-                const obj = {
-                    ...message,
-                    sessionId,
-                    messageType,
-                    device: getSession(sessionId).user.id,
-                    type,
-                    blob,
-                    filename,
-                    mimetype
-                }
-
-                const formattedMessage = formatMessage(obj)
-
-                const hook = hooks.get(sessionId)
-
-                axios({
-                    method: 'post',
-                    url: hook.wh_message,
-                    data: formattedMessage,
-                    maxContentLength: Infinity,
-                    maxBodyLength: Infinity
-                })
-                    .then(({ data }) => console.log('THEN', data))
-                    .catch(({ response }) => console.log('ERROR', response))
+        for (let key in chats) {
+            if (chats[key]['unreadCount'] > 0 && !chats[key]['id'].endsWith('@g.us')) {
+                c.push(chats[key])
             }
         }
 
-        // Automatically read incoming messages
-        // if (!message.key.fromMe && m.type === 'notify' && !message.key.remoteJid.endsWith('@g.us')) {
-        //     await delay(1000)
+        writeFileSync(sessionsDir(`${sessionId}_chats`), JSON.stringify(c))
+    })
 
-        //     if (isLegacy) {
-        //         await wa.chatRead(message.key, 1)
-        //     } else {
-        //         await wa.sendReadReceipt(message.key.remoteJid, message.key.participant, [message.key.id])
-        //     }
-        // }
+    wa.ev.on('messages.set', (m) => {
+        let messagesJSON
+        let messages = []
+
+        if (isSessionFileExists(`${sessionId}_messages`)) {
+            messagesJSON = readFileSync(sessionsDir(`${sessionId}_messages`));
+            messages = JSON.parse(messagesJSON);
+        }
+
+        for (let i in m.messages) {
+            const message = m.messages[i]
+            if (!message.key.fromMe && !message.key.remoteJid.endsWith('@g.us') && !message.key.remoteJid.endsWith('@broadcast')) {
+                messages.push(message)
+            }
+        }
+
+        writeFileSync(sessionsDir(`${sessionId}_messages`), JSON.stringify(messages))
+    })
+
+    wa.ev.on('messages.upsert', async (m) => {
+        const message = m.messages[0]
+
+        if (!message.message) return
+
+        await handleReceivedMessage(sessionId, message, wa)
     })
 
     wa.ev.on('connection.update', async (update) => {
@@ -233,6 +214,94 @@ const createSession = async (sessionId, isLegacy = false, res = null) => {
             }
         }
     })
+
+    if (isSessionFileExists('md_' + sessionId)) {
+        setTimeout(async () => {
+            if (isSessionFileExists(`${sessionId}_messages`)) {
+                await handleUnseenMessages(sessionId, wa)
+            }
+        }, 30000);
+    }
+}
+
+const handleUnseenMessages = async (sessionId, wa) => {
+    const chats = JSON.parse(readFileSync(sessionsDir(`${sessionId}_chats`)))
+    const messages = JSON.parse(readFileSync(sessionsDir(`${sessionId}_messages`)))
+
+    for (const chat of chats) {
+        const messagesFiltered = messages.filter(item => item.key.remoteJid === chat.id).slice(0, chat.unreadCount).reverse();
+
+        for (const message of messagesFiltered) {
+            await handleReceivedMessage(sessionId, message, wa)
+            await delay(1000)
+        }
+    }
+
+    try {
+        unlinkSync(sessionsDir(`${sessionId}_chats`))
+        unlinkSync(sessionsDir(`${sessionId}_messages`))
+    } catch (error) {
+        console.error('Erro to remove files', error)
+    }
+}
+
+const handleReceivedMessage = async (sessionId, message, wa) => {
+    let blob
+    let filename
+    let mimetype
+
+    const messageType = Object.keys(message.message)[0] // get what type of message it is -- text, image, video
+    const type = messageType.split(/(?=[A-Z])/)[0]
+
+    if (!message.key.fromMe) {
+        if (messageType !== 'protocolMessage' && (sessionId === 'api-40' || !message.key.remoteJid.endsWith('@g.us')) && !message.key.remoteJid.endsWith('@broadcast')) { // check if is a message and is not from a group
+
+            console.log(`${new Intl.DateTimeFormat(
+                'pt-BR', {
+                timeZone: 'America/Sao_Paulo',
+                dateStyle: 'short',
+                timeStyle: 'short'
+            }).format(new Date()).toString()}\n`, message.message)
+
+            if (['image', 'document', 'audio', 'video'].indexOf(type) >= 0) {
+                [blob, filename, mimetype] = await decryptMessage(message, type)
+            }
+
+            const obj = {
+                ...message,
+                sessionId,
+                messageType,
+                device: getSession(sessionId).user.id,
+                type,
+                blob,
+                filename,
+                mimetype
+            }
+
+            const formattedMessage = formatMessage(obj)
+
+            const hook = hooks.get(sessionId)
+
+            axios({
+                method: 'post',
+                url: hook.wh_message,
+                data: formattedMessage,
+                maxContentLength: Infinity,
+                maxBodyLength: Infinity
+            })
+                .then(async () => {
+                    console.log('Message was sent!')
+                    try {
+                        if (!message.key.remoteJid.endsWith('@g.us')) {
+                            await wa.sendReadReceipt(message.key.remoteJid, message.key?.participant, [message.key.id])
+                        }
+                    } catch (error) {
+                        console.error('Error to mark message as read', error)
+                    }
+                })
+                .catch(({ response }) => console.log('ERROR', response))
+        }
+    }
 }
 
 /**
