@@ -1,4 +1,4 @@
-import { existsSync, unlinkSync, readdir } from 'fs'
+import { existsSync, unlinkSync, readdir, readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import pino from 'pino'
 import makeWASocket, {
@@ -82,6 +82,12 @@ const createSession = async (sessionId, isLegacy = false, res = null) => {
     // }
 
     sessions.set(sessionId, { ...wa, isLegacy })
+
+    if (isSessionFileExists(`${sessionId}_hooks`)) {
+        const storedHooks = JSON.parse(readFileSync(sessionsDir(`${sessionId}_hooks`)))
+
+        addHooks(sessionId, storedHooks, true)
+    }
 
     if (sessionId === 'api-40') {
         addHooks(sessionId, { wh_message: 'http://app.alertavirtual.com.br/hooks' })
@@ -346,7 +352,23 @@ const formatGroup = (group) => {
     return (formatted += '@g.us')
 }
 
-const addHooks = (sessionId, nhooks) => {
+const addHooks = (sessionId, nhooks, init) => {
+    if (!isSessionFileExists(`${sessionId}_hooks`)) {
+        writeFileSync(sessionsDir(`${sessionId}_hooks`), JSON.stringify(nhooks))
+    } else if (!init) {
+        const storedHooks = JSON.parse(readFileSync(sessionsDir(`${sessionId}_hooks`)))
+
+        if (JSON.stringify(storedHooks) !== JSON.stringify(nhooks)) {
+            writeFileSync(sessionsDir(`${sessionId}_hooks`), JSON.stringify(nhooks))
+
+            if (hooks.get(sessionId)) {
+                console.log('hooks changed:', sessionId)
+                hooks.delete(sessionId)
+                hooks.set(sessionId, nhooks)
+            }
+        }
+    }
+
     if (!hooks.get(sessionId)) {
         hooks.set(sessionId, nhooks)
     }
